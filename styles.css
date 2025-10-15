@@ -1,7 +1,7 @@
 html,body {
   height:100%;
   margin:0;
-  background:#000; /* خلفية سوداء نقية */
+  background:#000; /* خلفية سوداء */
   overflow:hidden;
 }
 canvas {

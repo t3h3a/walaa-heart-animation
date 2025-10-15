@@ -1,6 +1,5 @@
 console.clear();
 
-// إعداد المشهد
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 5000);
 camera.position.z = 700;
@@ -8,23 +7,20 @@ camera.position.z = 700;
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio > 1 ? 2 : 1);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000, 1); // خلفية سوداء نقية
+renderer.setClearColor(0x000000, 1);
 document.body.appendChild(renderer.domElement);
 
-// تحديث عند تغيير حجم الشاشة
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// إعداد الجزيئات
 const PARTICLE_COUNT = 1400;
 const COLOR = 0xee5282;
 const particlesVerts = [];
 let pointsMesh, positions;
 
-// رسم نص وتحويله إلى نقاط
 function sampleTextPoints(text, w, h, step = 4, fontScale = 0.6) {
   const off = document.createElement('canvas');
   off.width = w;
@@ -48,7 +44,6 @@ function sampleTextPoints(text, w, h, step = 4, fontScale = 0.6) {
   return pts;
 }
 
-// توليد شكل القلب
 function sampleHeartPoints(n) {
   const pts = [];
   for (let i = 0; i < n; i++) {
@@ -60,11 +55,10 @@ function sampleHeartPoints(n) {
   return pts;
 }
 
-// بناء الجسيمات
 function buildParticles() {
   if (pointsMesh) scene.remove(pointsMesh);
-
   particlesVerts.length = 0;
+
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const vx = (Math.random() - 0.5) * window.innerWidth;
     const vy = (Math.random() - 0.5) * window.innerHeight;
@@ -93,37 +87,49 @@ function buildParticles() {
   scene.add(pointsMesh);
 }
 
-// توليد الأشكال المطلوبة
 function computeTargets() {
   const heartRaw = sampleHeartPoints(PARTICLE_COUNT);
-  const scale = Math.min(window.innerWidth, window.innerHeight) / 36 * 1.3; // ← صغّر القلب (بدل 1.8)
+
+  // ✅ التعديل الجديد لضبط الحجم والموقع على جميع الأجهزة
+  let scaleBase = Math.min(window.innerWidth, window.innerHeight);
+  let scaleFactor = 1.3;
+
+  if (window.innerWidth < 600) scaleFactor = 0.6;
+  else if (window.innerWidth < 1000) scaleFactor = 0.9;
+  else scaleFactor = 1.2;
+
+  const scale = scaleBase / 36 * scaleFactor * 0.8;
+
   const heartTargets = heartRaw.map(p => {
     return new THREE.Vector3(p.x * scale, p.y * scale - 100, (Math.random()-0.5)*80);
   });
 
   const nameW = Math.max(380, Math.floor(window.innerWidth * 0.7));
-  const nameH = Math.max(120, Math.floor(window.innerHeight * 0.18));
-  const nameRaw = sampleTextPoints('Walaa', nameW, nameH, 4, 0.72);
-  const nameTargets = nameRaw.map(r => new THREE.Vector3(r.x, r.y, (Math.random()-0.5)*40));
-
+  let nameH = Math.max(120, Math.floor(window.innerHeight * 0.18));
   const phraseW = Math.max(500, Math.floor(window.innerWidth * 0.9));
-  const phraseH = Math.max(120, Math.floor(window.innerHeight * 0.18));
+  let phraseH = Math.max(120, Math.floor(window.innerHeight * 0.18));
+
+  if (window.innerWidth < 800) {
+    nameH *= 0.6;
+    phraseH *= 0.6;
+  }
+
+  const nameRaw = sampleTextPoints('Walaa', nameW, nameH, 4, 0.72);
+  const nameTargets = nameRaw.map(r => new THREE.Vector3(r.x, r.y - 20, (Math.random()-0.5)*40));
+
   const phraseRaw = sampleTextPoints('I LOVE YOU WALAA', phraseW, phraseH, 4, 0.5);
-  const phraseTargets = phraseRaw.map(r => new THREE.Vector3(r.x, r.y, (Math.random()-0.5)*40));
+  const phraseTargets = phraseRaw.map(r => new THREE.Vector3(r.x, r.y - 40, (Math.random()-0.5)*40));
 
   return { heartTargets, nameTargets, phraseTargets };
 }
 
-// المشاهد
 let targets = computeTargets();
 let tl;
 
-// تسلسل الحركة
 function startSequence() {
   if (tl) tl.kill();
   tl = gsap.timeline({ repeat: -1, repeatDelay: 1 });
 
-  // انتشار
   tl.to(particlesVerts, {
     duration: 1.2,
     ease: "power1.out",
@@ -139,7 +145,6 @@ function startSequence() {
 
   tl.to({}, { duration: 0.6 });
 
-  // تشكيل القلب
   tl.to(particlesVerts, {
     duration: 3,
     ease: "power2.inOut",
@@ -153,7 +158,6 @@ function startSequence() {
 
   tl.to({}, { duration: 1 });
 
-  // تفكك القلب
   tl.to(particlesVerts, {
     duration: 0.6,
     ease: "power2.out",
@@ -169,7 +173,6 @@ function startSequence() {
 
   tl.to({}, { duration: 0.5 });
 
-  // كتابة "Walaa"
   tl.to(particlesVerts, {
     duration: 2.4,
     ease: "power2.inOut",
@@ -184,12 +187,10 @@ function startSequence() {
 
   tl.to({}, { duration: 1 });
 
-  // كتابة "I LOVE YOU WALAA"
   tl.to(particlesVerts, {
     duration: 2.6,
     ease: "power2.inOut",
     onStart: () => {
-      const half = Math.floor(PARTICLE_COUNT/2);
       for (let i=0;i<PARTICLE_COUNT;i++) {
         const pt = targets.phraseTargets[i % targets.phraseTargets.length];
         particlesVerts[i].target = new THREE.Vector3(pt.x + 120, pt.y - 50, pt.z);
@@ -224,28 +225,21 @@ function updatePositions() {
   pointsMesh.geometry.attributes.position.needsUpdate = true;
 }
 
-// تهيئة
 buildParticles();
 targets = computeTargets();
 startSequence();
 
-// دوران بسيط
 gsap.to(scene.rotation, { y: 0.35, duration: 6, repeat: -1, yoyo: true, ease: "sine.inOut" });
 
-// تشغيل الرسوم
 function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
 animate();
 
-// الصوت
+// ✅ تشغيل الموسيقى بعد أول لمسة
 const audio = document.getElementById('bgMusic');
 audio.volume = 0.4;
-function playMusic() {
-  audio.play().catch(()=>{});
-  window.removeEventListener('pointerdown', playMusic);
-  window.removeEventListener('touchstart', playMusic);
-}
-window.addEventListener('pointerdown', playMusic, { once: true });
-window.addEventListener('touchstart', playMusic, { once: true });
+document.addEventListener("click", () => {
+  audio.play().catch(() => {});
+}, { once: true });
